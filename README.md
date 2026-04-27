@@ -1,2 +1,490 @@
-# stuti
-happy birthdy
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Happy Birthday Stuti</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #1a1a24 0%, #050508 100%);
+            overflow: hidden; touch-action: none;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        canvas {
+            display: block; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; z-index: 1;
+        }
+
+        #hint {
+            position: absolute; width: 100%; text-align: center;
+            bottom: 8%; color: rgba(255, 255, 255, 0.7);
+            font-size: 14px; letter-spacing: 3px; text-transform: uppercase;
+            animation: pulse 2s infinite ease-in-out; 
+            pointer-events: none; z-index: 10;
+        }
+
+        /* Glassmorphism Final Message Container */
+        #finalMessage {
+            position: absolute;
+            left: 5%; top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            color: #fff;
+            font-size: clamp(14px, 3.5vw, 18px);
+            line-height: 1.8;
+            opacity: 0; 
+            pointer-events: none;
+            z-index: 100;
+            transition: opacity 2.5s ease-in-out, transform 2.5s ease-out;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        #finalMessage.show {
+            opacity: 1;
+            transform: translateY(-50%) translateX(20px);
+        }
+
+        .highlight {
+            font-family: 'Dancing Script', cursive;
+            color: #ffb6c1;
+            font-size: 1.5em;
+            text-shadow: 0 0 10px rgba(255, 182, 193, 0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="hint">Tap anywhere to start</div>
+    
+    <div id="finalMessage">
+        <span class="highlight">Hey you 💞</span><br>
+        Happy Birthday 🎈<br>
+        May God bless you 🍀<br>
+        And give u many happiness 💕<br>
+        I love you too much 💖 <br>
+        Just saying… you're pretty awesome 💖<br>
+        Sending good vibes and maybe a wink 😉<br>
+        Hope u have a great day today 💗<br>
+        🥳<br><br>
+            ┏┓┏┓｡・ﾟﾟ・｡｡ﾟ♡ <br>
+             ┃┗┛appy♡  <br>
+             ┃┏┓┃birth✿  <br>
+             ┗┛┗┛ day*ﾟ✾   <br>
+                   ｡.｡.｡.｡♡
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Configuration
+        const bloomColors = ['#ff1493', '#ff69b4', '#ffb6c1', '#ffd700', '#ffffff'];
+        
+        // Easing functions for organic movement
+        const easeOutQuart = t => 1 - (--t) * t * t * t;
+        const easeOutBounce = t => {
+            const n1 = 7.5625, d1 = 2.75;
+            if (t < 1 / d1) return n1 * t * t;
+            if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75;
+            if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375;
+            return n1 * (t -= 2.625 / d1) * t + 0.984375;
+        };
+
+        class Star {
+            constructor() {
+                this.reset(true);
+            }
+            reset(randomizeY = false) {
+                this.x = Math.random() * canvas.width;
+                this.y = randomizeY ? Math.random() * canvas.height : -10;
+                this.size = Math.random() * 1.5 + 0.5;
+                this.speed = Math.random() * 10 + 5;
+                this.alpha = Math.random();
+            }
+            update(dt) {
+                this.y += this.speed * dt;
+                if (this.y > canvas.height) this.reset();
+            }
+            draw() {
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        class Petal {
+            constructor(x, y, color, size, delay) {
+                this.x = x; this.y = y;
+                this.baseX = x; this.baseY = y;
+                this.color = color;
+                this.size = size;
+                this.delay = delay;
+                this.scale = 0;
+                this.angle = Math.random() * Math.PI * 2;
+                this.falling = Math.random() > 0.7; // 30% chance to fall
+                this.fallSpeed = Math.random() * 30 + 20;
+                this.sway = Math.random() * 2;
+                this.swaySpeed = Math.random() * 2 + 1;
+                this.time = 0;
+            }
+            update(dt, globalTime) {
+                if (globalTime < this.delay) return;
+                
+                // Grow
+                if (this.scale < 1) this.scale += dt * 3;
+                if (this.scale > 1) this.scale = 1;
+
+                this.time += dt;
+
+                // Fall logic
+                if (this.falling && globalTime > this.delay + 3) {
+                    this.y += this.fallSpeed * dt;
+                    this.x += Math.sin(this.time * this.swaySpeed) * this.sway;
+                    this.angle += dt;
+                } else {
+                    // Twinkle/gentle movement while attached
+                    this.angle = Math.sin(this.time * 2) * 0.1;
+                }
+            }
+            draw() {
+                if (this.scale <= 0) return;
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.fillStyle = this.color;
+                
+                // Draw vector heart
+                let s = this.size * this.scale;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(-s, -s, -s * 2, s / 2, 0, s * 1.5);
+                ctx.bezierCurveTo(s * 2, s / 2, s, -s, 0, 0);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class App {
+            constructor() {
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                
+                this.state = 0; 
+                this.time = 0;
+                this.stars = Array.from({length: 100}, () => new Star());
+                this.petals = [];
+                this.branches = [];
+                
+                // Triggers
+                window.addEventListener('click', () => this.interact());
+                window.addEventListener('touchstart', () => this.interact());
+
+                this.lastTime = performance.now();
+                requestAnimationFrame((t) => this.loop(t));
+            }
+
+            resize() {
+                this.w = canvas.width = window.innerWidth;
+                this.h = canvas.height = window.innerHeight;
+                
+                this.floorY = this.h * 0.85;
+                this.ballRadius = Math.min(this.w, this.h) * 0.04;
+                this.ballX = this.w * 0.4;
+                this.treeX = this.w * 0.75;
+                this.fallY = this.h / 2;
+                
+                this.heartScale = Math.min(this.w, this.h) / 35;
+                this.trunkTopY = this.floorY - (this.h * 0.25);
+                this.heartOffsetY = this.trunkTopY - (17 * this.heartScale);
+            }
+
+            generateTree(x, y, length, angle, depth, curve) {
+                if (depth === 0) return;
+                
+                let segments = 8;
+                let path = [{x, y}];
+                let curX = x, curY = y, curAngle = angle;
+                let segLen = length / segments;
+                
+                for(let i=0; i<segments; i++) {
+                    let upwardPull = (-Math.PI/2 - curAngle) * 0.08; 
+                    curAngle += curve + upwardPull;
+                    curX += Math.cos(curAngle) * segLen;
+                    curY += Math.sin(curAngle) * segLen;
+                    path.push({x: curX, y: curY});
+                }
+                
+                this.branches.push({ path, depth });
+                
+                if (depth > 1) {
+                    let nextLen = length * 0.75;
+                    if (depth === 5) {
+                        this.generateTree(curX, curY, nextLen * 1.15, curAngle - 0.5, depth - 1, -0.05);
+                        this.generateTree(curX, curY, nextLen * 0.8, curAngle, depth - 1, 0);
+                        this.generateTree(curX, curY, nextLen * 1.15, curAngle + 0.5, depth - 1, 0.05);
+                    } else {
+                        let spread = 0.3 + Math.random() * 0.2;
+                        this.generateTree(curX, curY, nextLen, curAngle - spread, depth - 1, curve - 0.02);
+                        this.generateTree(curX, curY, nextLen, curAngle + spread, depth - 1, curve + 0.02);
+                    }
+                }
+            }
+
+            getHeartPos(t, scale, offX, offY) {
+                const hx = scale * 16 * Math.pow(Math.sin(t), 3);
+                const hy = -scale * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                return { x: offX + hx, y: offY + hy };
+            }
+
+            interact() {
+                if (this.state === 0) {
+                    this.state = 1;
+                    this.stateTime = 0;
+                    document.getElementById('hint').style.display = 'none';
+                    
+                    this.branches = [];
+                    this.generateTree(this.treeX, this.trunkTopY, this.heartScale * 4.8, -Math.PI / 2, 5, 0);
+                    
+                    this.petals = [];
+                    for (let i = 0; i < 700; i++) {
+                        let t = Math.random() * Math.PI * 2;
+                        let r = Math.sqrt(Math.random()) * 0.92; 
+                        let pos = this.getHeartPos(t, r * this.heartScale, this.treeX, this.heartOffsetY);
+                        let color = bloomColors[Math.floor(Math.random() * bloomColors.length)];
+                        this.petals.push(new Petal(pos.x, pos.y, color, Math.random() * 4 + 3, Math.random() * 1.5));
+                    }
+                }
+            }
+
+            drawCake(alpha) {
+                ctx.globalAlpha = alpha;
+                let cx = this.w/2, cy = this.h/2;
+
+                // Plate
+                ctx.fillStyle = '#2a2a35';
+                ctx.beginPath();
+                ctx.ellipse(cx, cy + 65, 140, 20, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Cake Base
+                let grad = ctx.createLinearGradient(cx, cy, cx, cy + 60);
+                grad.addColorStop(0, '#d62839');
+                grad.addColorStop(1, '#9e1423');
+                ctx.fillStyle = grad;
+                ctx.fillRect(cx - 100, cy, 200, 60);
+                
+                // Drip
+                ctx.fillStyle = '#b31b29';
+                ctx.beginPath();
+                ctx.moveTo(cx - 100, cy + 30);
+                for(let i=0; i<=200; i+=20) {
+                    ctx.quadraticCurveTo(cx - 90 + i, cy + 45, cx - 80 + i, cy + 30);
+                }
+                ctx.lineTo(cx + 100, cy + 60);
+                ctx.lineTo(cx - 100, cy + 60);
+                ctx.fill();
+
+                // Top layer
+                ctx.fillStyle = '#f497a9';
+                ctx.fillRect(cx - 75, cy - 50, 150, 50);
+
+                // Top drip
+                ctx.fillStyle = '#d62839';
+                ctx.beginPath();
+                ctx.moveTo(cx - 75, cy - 50);
+                ctx.lineTo(cx + 75, cy - 50);
+                ctx.lineTo(cx + 75, cy - 35);
+                for(let x = cx + 75; x >= cx - 75; x -= 25) {
+                    ctx.arc(x - 12.5, cy - 35, 12.5, 0, Math.PI, false);
+                }
+                ctx.fill();
+
+                // Candles
+                for (let i = 0; i < 4; i++) {
+                    let candleX = cx - 45 + (i * 30); 
+                    ctx.fillStyle = '#f58220'; 
+                    ctx.fillRect(candleX - 4, cy - 90, 8, 40);
+                    
+                    // Animated Flame
+                    let flicker = Math.sin(performance.now() / 150 + i) * 3; 
+                    ctx.shadowColor = '#ffaa00';
+                    ctx.shadowBlur = 20;
+                    ctx.fillStyle = '#ffe600';
+                    ctx.beginPath();
+                    ctx.moveTo(candleX, cy - 110 + flicker);
+                    ctx.quadraticCurveTo(candleX + 6, cy - 90, candleX, cy - 90);
+                    ctx.quadraticCurveTo(candleX - 6, cy - 90, candleX, cy - 110 + flicker);
+                    ctx.fill();
+                    ctx.shadowBlur = 0; 
+                }
+
+                // Text
+                ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = '#ffeadd';
+                ctx.font = 'clamp(35px, 6vw, 55px) "Dancing Script", cursive';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('Happy birthday Stuti', cx, cy + 15);
+                ctx.shadowBlur = 0;
+
+                ctx.globalAlpha = 1;
+            }
+
+            loop(timestamp) {
+                let dt = (timestamp - this.lastTime) / 1000;
+                this.lastTime = timestamp;
+                if(dt > 0.1) dt = 0.1;
+                this.time += dt;
+
+                ctx.clearRect(0, 0, this.w, this.h);
+
+                // Draw Stars
+                this.stars.forEach(s => { s.update(dt); s.draw(); });
+
+                // Draw Floor Glow
+                let floorGrad = ctx.createLinearGradient(0, this.floorY, 0, this.h);
+                floorGrad.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+                floorGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = floorGrad;
+                ctx.fillRect(0, this.floorY, this.w, this.h - this.floorY);
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, this.floorY);
+                ctx.lineTo(this.w, this.floorY);
+                ctx.stroke();
+
+                if (this.state === 0) {
+                    this.drawCake(1);
+                } 
+                else if (this.state === 1) {
+                    this.stateTime += dt * 1.5;
+                    let p = Math.min(this.stateTime, 1);
+                    this.drawCake(1 - p);
+                    
+                    ctx.fillStyle = '#FFD1DC'; 
+                    ctx.shadowColor = '#FFD1DC';
+                    ctx.shadowBlur = 15;
+                    ctx.beginPath();
+                    ctx.arc(this.ballX, this.fallY, this.ballRadius * easeOutQuart(p), 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    if (p === 1) { this.state = 2; this.stateTime = 0; }
+                } 
+                else if (this.state === 2) {
+                    this.stateTime += dt * 1.2; // Fall speed
+                    let p = Math.min(this.stateTime, 1);
+                    let currentY = this.fallY + (this.floorY - this.ballRadius - this.fallY) * easeOutBounce(p);
+                    
+                    ctx.fillStyle = '#FFD1DC';
+                    ctx.beginPath();
+                    ctx.arc(this.ballX, currentY, this.ballRadius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (p === 1) { this.state = 3; this.stateTime = 0; }
+                }
+                else if (this.state >= 3) {
+                    this.stateTime += dt;
+                    
+                    // Trunk growth
+                    let trunkP = Math.min(this.stateTime * 1.2, 1);
+                    let curTrunkY = this.floorY - (this.floorY - this.trunkTopY) * easeOutQuart(trunkP);
+                    let baseW = 45, topW = 12;
+                    let curW = baseW - (baseW - topW) * trunkP;
+
+                    // Draw Trunk
+                    let trunkGrad = ctx.createLinearGradient(this.treeX - baseW, 0, this.treeX + baseW, 0);
+                    trunkGrad.addColorStop(0, '#7a4248');
+                    trunkGrad.addColorStop(0.5, '#a25a62');
+                    trunkGrad.addColorStop(1, '#5e3136');
+                    
+                    ctx.fillStyle = trunkGrad; 
+                    ctx.beginPath();
+                    ctx.moveTo(this.treeX - baseW/2, this.floorY);
+                    ctx.lineTo(this.treeX + baseW/2, this.floorY);
+                    ctx.lineTo(this.treeX + curW/2, curTrunkY);
+                    ctx.lineTo(this.treeX - curW/2, curTrunkY);
+                    ctx.fill();
+
+                    // Branches & Bloom
+                    if (trunkP === 1) {
+                        if (this.state === 3) { this.state = 4; this.branchTime = 0; }
+                        this.branchTime += dt;
+                        let branchP = Math.min(this.branchTime * 0.5, 1);
+
+                        ctx.strokeStyle = '#a25a62';
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+
+                        // Draw elegant inner branches
+                        this.branches.forEach(b => {
+                            let bp = (easeOutQuart(branchP) * 5) - (5 - b.depth);
+                            if (bp > 0) {
+                                bp = Math.min(1, Math.max(0, bp));
+                                ctx.beginPath();
+                                ctx.moveTo(b.path[0].x, b.path[0].y);
+                                
+                                let totalSegs = b.path.length - 1;
+                                let visibleSegs = bp * totalSegs;
+                                let fullSegs = Math.floor(visibleSegs);
+                                let remainder = visibleSegs - fullSegs;
+                                
+                                for(let i = 1; i <= fullSegs; i++) ctx.lineTo(b.path[i].x, b.path[i].y);
+                                if (fullSegs < totalSegs && remainder > 0) {
+                                    let p1 = b.path[fullSegs], p2 = b.path[fullSegs + 1];
+                                    ctx.lineTo(p1.x + (p2.x - p1.x) * remainder, p1.y + (p2.y - p1.y) * remainder);
+                                }
+                                ctx.lineWidth = b.depth * 0.8 + 0.5;
+                                ctx.stroke();
+                            }
+                        });
+
+                        // Draw Bloom/Petals
+                        if (branchP > 0.5) {
+                            if (this.state === 4) { this.state = 5; this.bloomTime = 0; }
+                            this.bloomTime += dt;
+                            
+                            this.petals.forEach(p => {
+                                p.update(dt, this.bloomTime);
+                                p.draw();
+                            });
+
+                            // Show Text
+                            if (this.bloomTime > 2.5 && this.state === 5) {
+                                this.state = 6;
+                                document.getElementById('finalMessage').classList.add('show');
+                            }
+                        }
+                    }
+                }
+                requestAnimationFrame((t) => this.loop(t));
+            }
+        }
+
+        // Initialize App
+        new App();
+    </script>
+</body>
+</html>

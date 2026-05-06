@@ -344,7 +344,7 @@
                 ctx.font = 'clamp(35px, 6vw, 55px) "Dancing Script", cursive';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('Happy birthday Stuti', cx, cy + 15);
+                ctx.fillText('Happy birthday', cx, cy + 15);
                 ctx.shadowBlur = 0;
 
                 ctx.globalAlpha = 1;
